@@ -16,6 +16,6 @@ class Payment(Base):
     provider_order_id: Mapped[str | None] = mapped_column(String(255))
     provider_payment_id: Mapped[str | None] = mapped_column(String(255))
     provider_data: Mapped[dict | None] = mapped_column(JSON)
-    metadata: Mapped[dict | None] = mapped_column(JSON)
+    extra_metadata: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
