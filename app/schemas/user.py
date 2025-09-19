@@ -1,8 +1,8 @@
 from fastapi_users import schemas
-from .rbac import RoleReadWithPermissions
+from .rbac import RoleRead
 
 class UserRead(schemas.BaseUser[int]):
-    roles: list[RoleReadWithPermissions] = []
+    roles: list[RoleRead] = []
 
 class UserCreate(schemas.BaseUserCreate):
     pass

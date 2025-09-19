@@ -43,7 +43,7 @@ async def update_user_me(
 @router.get(
     "/",
     response_model=List[UserRead],
-    dependencies=[Depends(AutoPermission(override=perms.USERS_READ))],
+    dependencies=[Depends(AutoPermission(override=perms.AppPermissions.USERS_READ))],
 )
 async def read_users(
     skip: int = 0,
@@ -61,16 +61,16 @@ async def read_users(
 async def read_user_by_id(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(AutoPermission(override=perms.USERS_READ))
+    user: User = Depends(AutoPermission(override=perms.AppPermissions.USERS_READ))
 ):
     """
     Get a specific user by id.
     A regular user can only see their own profile.
     An admin with 'users:read' can see any profile.
     """
-    user_permissions = {perm.name for role in user.roles for perm in role.permissions}
+    user_permissions = {perm for role in user.roles for perm in role.permissions}
 
-    if user.id == user_id or perms.USERS_READ in user_permissions:
+    if user.id == user_id or perms.AppPermissions.USERS_READ in user_permissions:
         target_user = await crud_user.get(db, id=user_id)
         if not target_user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -82,7 +82,7 @@ async def read_user_by_id(
 @router.get(
     "/{user_id}/permissions",
     response_model=List[str],
-    dependencies=[Depends(AutoPermission(override=perms.USERS_READ))],
+    dependencies=[Depends(AutoPermission(override=perms.AppPermissions.USERS_READ))],
 )
 async def get_user_permissions(user_id: int, db: AsyncSession = Depends(get_db)):
     """
@@ -92,5 +92,5 @@ async def get_user_permissions(user_id: int, db: AsyncSession = Depends(get_db))
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_permissions = {perm.name for role in target_user.roles for perm in role.permissions}
+    user_permissions = {perm for role in target_user.roles for perm in role.permissions}
     return sorted(list(user_permissions))

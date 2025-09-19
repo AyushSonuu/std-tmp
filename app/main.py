@@ -2,15 +2,15 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from loguru import logger
 
-from app.admin import setup_admin
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.exception_handlers import setup_exception_handlers
 from app.db.session import engine, AsyncSessionLocal
 from app.db.initial_data import seed_initial_data
-from app.api.routers import rbac, admin, profiles
-from app.auth.auth import fastapi_users, auth_backend
+from app.api.routers import admin, profiles, rbac
+from app.auth.auth import auth_backend, fastapi_users
 from app.schemas.user import UserRead, UserCreate, UserUpdate
+from app.services.payment.router import router as payment_router
 
 
 @asynccontextmanager
@@ -30,9 +30,6 @@ app = FastAPI(
     lifespan=lifespan,
     # ... other app config
 )
-
-# Mount the admin panel
-setup_admin(app, engine)
 
 setup_exception_handlers(app)
 
@@ -66,3 +63,4 @@ app.include_router(
 app.include_router(rbac.router, prefix="/api/v1/rbac", tags=["RBAC Management"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["Profiles"])
+app.include_router(payment_router, prefix="/api/v1/payments", tags=["Payments"])

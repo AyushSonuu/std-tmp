@@ -3,12 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RequiresPermission
-from app.core import permissions as perms
+from app.core.permissions import AppPermissions
 from app.db.session import get_db
 from app.crud import crud_rbac, crud_user
 from app.schemas import rbac as rbac_schemas
-from app.models.user import User
-from app.models.rbac import Role, Permission
+from app.models.rbac import Role
 
 router = APIRouter()
 
@@ -18,7 +17,7 @@ router = APIRouter()
 @router.post(
     "/roles",
     response_model=rbac_schemas.RoleRead,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
     status_code=status.HTTP_201_CREATED,
 )
 async def create_new_role(role_in: rbac_schemas.RoleCreate, db: AsyncSession = Depends(get_db)):
@@ -31,7 +30,7 @@ async def create_new_role(role_in: rbac_schemas.RoleCreate, db: AsyncSession = D
 @router.get(
     "/roles",
     response_model=List[rbac_schemas.RoleRead],
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
 )
 async def get_all_roles(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     """Get all roles."""
@@ -39,8 +38,8 @@ async def get_all_roles(skip: int = 0, limit: int = 100, db: AsyncSession = Depe
 
 @router.get(
     "/roles/{role_id}",
-    response_model=rbac_schemas.RoleReadWithPermissions,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    response_model=rbac_schemas.RoleRead,
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
 )
 async def get_role_by_id(role_id: int, db: AsyncSession = Depends(get_db)):
     """Get a single role by its ID."""
@@ -52,10 +51,10 @@ async def get_role_by_id(role_id: int, db: AsyncSession = Depends(get_db)):
 @router.patch(
     "/roles/{role_id}",
     response_model=rbac_schemas.RoleRead,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
 )
 async def update_role_by_id(role_id: int, role_in: rbac_schemas.RoleUpdate, db: AsyncSession = Depends(get_db)):
-    """Update a role's details."""
+    """Update a role's details, including its permissions."""
     role = await crud_rbac.crud_role.get(db, id=role_id)
     if not role:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
@@ -69,7 +68,7 @@ async def update_role_by_id(role_id: int, role_in: rbac_schemas.RoleUpdate, db: 
 
 @router.delete(
     "/roles/{role_id}",
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_role_by_id(role_id: int, db: AsyncSession = Depends(get_db)):
@@ -80,71 +79,13 @@ async def delete_role_by_id(role_id: int, db: AsyncSession = Depends(get_db)):
     await crud_rbac.crud_role.remove(db, id=role_id)
     return
 
-# RBAC Management for Permissions
-# -------------------------------
-
-@router.post(
-    "/permissions",
-    response_model=rbac_schemas.PermissionRead,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_new_permission(perm_in: rbac_schemas.PermissionCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new permission."""
-    existing_perm = await crud_rbac.crud_permission.get_by_name(db, name=perm_in.name)
-    if existing_perm:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Permission with this name already exists")
-    return await crud_rbac.crud_permission.create(db, obj_in=perm_in)
-
-@router.get(
-    "/permissions",
-    response_model=List[rbac_schemas.PermissionRead],
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
-)
-async def get_all_permissions(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    """Get all permissions."""
-    return await crud_rbac.crud_permission.get_multi(db, skip=skip, limit=limit)
-
 # RBAC Management for Assignments
 # -------------------------------
 
 @router.post(
-    "/roles/{role_id}/permissions/{permission_id}",
-    response_model=rbac_schemas.RoleReadWithPermissions,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
-)
-async def add_permission_to_role(role_id: int, permission_id: int, db: AsyncSession = Depends(get_db)):
-    """Assign a permission to a role."""
-    role = await crud_rbac.crud_role.get(db, id=role_id)
-    if not role:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-    permission = await crud_rbac.crud_permission.get(db, id=permission_id)
-    if not permission:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Permission not found")
-    
-    return await crud_rbac.assign_permission_to_role(db, role=role, permission=permission)
-
-@router.delete(
-    "/roles/{role_id}/permissions/{permission_id}",
-    response_model=rbac_schemas.RoleReadWithPermissions,
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
-)
-async def remove_permission_from_role(role_id: int, permission_id: int, db: AsyncSession = Depends(get_db)):
-    """Remove a permission from a role."""
-    role = await crud_rbac.crud_role.get(db, id=role_id)
-    if not role:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-    permission = await crud_rbac.crud_permission.get(db, id=permission_id)
-    if not permission:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Permission not found")
-        
-    return await crud_rbac.remove_permission_from_role(db, role=role, permission=permission)
-
-
-@router.post(
     "/users/{user_id}/roles/{role_id}",
     response_model=rbac_schemas.RoleRead, # Consider a UserReadWithRoles schema
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
 )
 async def assign_role_to_user(user_id: int, role_id: int, db: AsyncSession = Depends(get_db)):
     """Assign a role to a user."""
@@ -159,7 +100,7 @@ async def assign_role_to_user(user_id: int, role_id: int, db: AsyncSession = Dep
 
 @router.delete(
     "/users/{user_id}/roles/{role_id}",
-    dependencies=[Depends(RequiresPermission(perms.RBAC_MANAGE))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.RBAC_MANAGE))],
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def remove_role_from_user(user_id: int, role_id: int, db: AsyncSession = Depends(get_db)):

@@ -13,7 +13,7 @@ dependencies = [
     "fastapi[all]>=0.116.2",
     "loguru>=0.7.3",
     "pydantic-settings>=2.10.1",
-    "sqladmin>=0.21.0",
+    "razorpay>=1.4.2",
     "sqlalchemy[asyncio]>=2.0.43",
     "uvicorn[standard]>=0.35.0",
 ]

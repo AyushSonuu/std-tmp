@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import RequiresPermission
-from app.core import permissions as perms
+from app.core.permissions import AppPermissions
 
 router = APIRouter()
 
 
 @router.get(
     "/system-status",
-    dependencies=[Depends(RequiresPermission(perms.REPORTS_VIEW))],
+    dependencies=[Depends(RequiresPermission(AppPermissions.REPORTS_VIEW))],
 )
 async def get_system_status():
     """

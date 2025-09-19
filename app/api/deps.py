@@ -6,7 +6,6 @@ from app.auth.auth import fastapi_users
 from app.models.user import User
 from app.core import permissions as perms
 
-
 current_active_user = fastapi_users.current_user(active=True)
 
 class RequiresPermission:
@@ -14,7 +13,7 @@ class RequiresPermission:
         self.permission_name = permission_name
 
     async def __call__(self, user: User = Depends(current_active_user)):
-        user_permissions = {perm.name for role in user.roles for perm in role.permissions}
+        user_permissions = {perm for role in user.roles for perm in role.permissions}
 
         if self.permission_name not in user_permissions:
             logger.warning(
@@ -33,7 +32,6 @@ _method_to_action = {
     "PUT": perms.ACTION_UPDATE,
     "DELETE": perms.ACTION_DELETE,
 }
-
 
 def AutoPermission(override: Optional[str] = None):
     """
@@ -67,7 +65,7 @@ def AutoPermission(override: Optional[str] = None):
             )
 
         # Check if user has the required permission
-        user_permissions = {perm.name for role in user.roles for perm in role.permissions}
+        user_permissions = {perm for role in user.roles for perm in role.permissions}
         if required_permission not in user_permissions:
             logger.warning(
                 f"User '{user.email}' lacks required permission '{required_permission}' for {request.method} {request.url.path}"
